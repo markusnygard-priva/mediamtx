@@ -1,0 +1,19 @@
+authMethod: internal
+authInternalUsers:
+  - user: admin
+    pass: adminpass
+    ips: []
+    permissions:
+      - action: api
+      - action: metrics
+      - action: pprof
+
+api: yes
+apiAddress: :9997
+metrics: yes
+metricsAddress: :9998
+
+rtspAddress: :8554
+rtmpAddress: :1935
+hlsAddress: :8888
+webrtcAddress: :8889

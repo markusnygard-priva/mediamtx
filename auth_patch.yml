@@ -1,0 +1,9 @@
+authMethod: internal
+authInternalUsers:
+  - user: admin
+    pass: adminpass  
+    ips: []
+    permissions:
+      - action: api
+      - action: metrics  
+      - action: pprof
