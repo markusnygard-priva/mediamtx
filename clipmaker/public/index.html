@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Clipmaster DMZ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+    <style>
+        .video-js { width: 100% !important; height: 500px !important; background: #000; border-radius: 12px; }
+        .vjs-progress-control { display: flex !important; visibility: visible !important; opacity: 1 !important; }
+        .vjs-marker { position: absolute; height: 100%; width: 6px; z-index: 10; pointer-events: none; }
+        .marker-in { background: #22c55e; } .marker-out { background: #ef4444; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 p-8">
+    <div class="max-w-5xl mx-auto">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-black text-blue-500 uppercase">Clipmaster</h1>
+            <div id="clock" class="font-mono text-2xl text-slate-400">00:00:00</div>
+        </header>
+
+        <video id="my-video" class="video-js vjs-big-play-centered mb-6" controls preload="auto">
+           <source src="http://192.168.8.23:3333/recordings/mystream/2026-02-16_16-20-22-148449.mp4" type="video/mp4">
+        </video>
+
+        <div class="grid grid-cols-2 gap-6 bg-slate-800 p-6 rounded-xl border border-slate-700">
+            <div style="width:100%; display:flex; justify-content:flex-start; margin-bottom:8px; grid-column:1/3;">
+                <button onclick="goToLive()" style="width:10%; min-width:60px; max-width:120px; font-size:10px; padding:4px 0; background:#15803d; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">GO TO LIVE</button>
+            </div>
+            <div class="bg-slate-900 p-4 rounded-lg">
+                <label class="block text-[10px] text-green-500 font-bold mb-2 uppercase">In Point</label>
+                <input id="inPoint" readonly class="w-full bg-transparent p-1 font-mono text-green-400 text-sm outline-none">
+                <div style="display:flex; align-items:center; width:100%; gap:8px;">
+                    <!-- Removed duplicate in-point display for alignment -->
+                    <span style="flex:1;"></span>
+                    <span id="inDuration" class="text-xs text-right" style="color:#fff; min-width:90px;"></span>
+                </div>
+                <button onclick="setPoint('in')" class="w-full bg-green-600 py-2 rounded font-bold uppercase text-xs">MARK IN</button>
+            </div>
+            <div class="bg-slate-900 p-4 rounded-lg">
+                <label class="block text-[10px] text-red-500 font-bold mb-2 uppercase">Out Point</label>
+                <input id="outPoint" readonly class="w-full bg-transparent p-1 font-mono text-red-400 text-sm outline-none">
+                <!-- Removed out-time and duration row, restoring previous layout -->
+                <button onclick="setPoint('out')" class="w-full bg-red-600 py-2 rounded font-bold uppercase text-xs">MARK OUT</button>
+            </div>
+            <button onclick="downloadClip()" class="col-span-2 bg-blue-600 py-4 rounded-xl font-black text-lg">GENERATE MP4</button>
+        </div>
+        <p id="status" class="text-center text-[10px] text-slate-500 mt-6 font-mono">Status: Initializing...</p>
+    </div>
+
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+        <script>
+        function goToLive() {
+            const video = document.querySelector('video');
+            if (video) {
+                video.currentTime = video.duration;
+                video.play();
+            }
+        }
+        </script>
+    <script>
+        const player = videojs('my-video', { liveui: true });
+        let segments = [];
+        let isEditing = false;
+
+        async function sync() {
+            try {
+                const res = await fetch('/api/list');
+                segments = await res.json();
+                document.getElementById('status').innerText = segments.length > 0 ? "ARCHIVE SYNCED" : "ARCHIVE EMPTY";
+            } catch (e) { document.getElementById('status').innerText = "SYNC ERROR"; }
+        }
+
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toTimeString().split(' ')[0];
+            if (!isEditing) {
+                const now = new Date();
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                const ss = String(now.getSeconds()).padStart(2, '0');
+                document.getElementById('inPoint').value = `${hh}:${mm}:${ss}`;
+            }
+        }, 1000);
+
+        function setPoint(type) {
+            isEditing = true;
+            const seek = player.currentTime();
+            if (segments.length === 0 || isNaN(seek)) return alert("Archive or Video not ready.");
+            const base = new Date(segments[0].start).getTime();
+            const date = new Date(base + (seek * 1000));
+            const hh = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            const ss = String(date.getSeconds()).padStart(2, '0');
+            const hms = `${hh}:${mm}:${ss}`;
+            document.getElementById(type + 'Point').value = hms;
+            if(type === 'in') {
+                document.getElementById('inTimeDisplay').textContent = hms;
+                document.getElementById('inDuration').textContent = '';
+            }
+            if(type === 'out') {
+                document.getElementById('outTimeDisplay').textContent = hms;
+                const inVal = document.getElementById('inPoint').value;
+                let durationText = '';
+                if (/^\d{2}:\d{2}:\d{2}$/.test(inVal)) {
+                    const [inh, inm, ins] = inVal.split(':').map(Number);
+                    const [outh, outm, outs] = hms.split(':').map(Number);
+                    let inSec = inh*3600 + inm*60 + ins;
+                    let outSec = outh*3600 + outm*60 + outs;
+                    let durSec = outSec - inSec;
+                    if (durSec < 0) durSec = 0;
+                    const dh = String(Math.floor(durSec/3600)).padStart(2,'0');
+                    const dm = String(Math.floor((durSec%3600)/60)).padStart(2,'0');
+                    const ds = String(durSec%60).padStart(2,'0');
+                    durationText = `duration: ${dh}:${dm}:${ds}`;
+                }
+                document.getElementById('clipDuration').textContent = durationText;
+            }
+            addMarker(seek, type === 'in' ? 'marker-in' : 'marker-out');
+        }
+
+        function addMarker(time, cls) {
+            const bar = player.controlBar.progressControl.seekBar.el();
+            const dur = player.duration();
+            if (!isFinite(dur)) return;
+            const pct = (time / dur) * 100;
+            let m = bar.querySelector('.' + cls) || document.createElement('div');
+            m.className = `vjs-marker ${cls}`;
+            m.style.left = pct + '%';
+            if (!m.parentNode) bar.appendChild(m);
+        }
+
+        function downloadClip() {
+            const s = document.getElementById('inPoint').value;
+            const e = document.getElementById('outPoint').value;
+            const dur = Math.round((new Date(e) - new Date(s)) / 1000);
+            if (!e || dur <= 0) return alert("Range Error");
+               // Show a custom modal for filename and download path info
+               let modal = document.createElement('div');
+               modal.style.position = 'fixed';
+               modal.style.left = '0';
+               modal.style.top = '0';
+               modal.style.width = '100vw';
+               modal.style.height = '100vh';
+               modal.style.background = 'rgba(0,0,0,0.4)';
+               modal.style.display = 'flex';
+               modal.style.alignItems = 'center';
+               modal.style.justifyContent = 'center';
+               modal.style.zIndex = '9999';
+               let box = document.createElement('div');
+            box.style.background = '#222';
+            box.style.color = '#fff';
+            box.style.padding = '24px';
+            box.style.borderRadius = '8px';
+            box.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+            box.style.minWidth = '320px';
+            let label = document.createElement('div');
+            label.style.marginBottom = '8px';
+            label.innerHTML = '<b style="color:#fff">Download to:</b> <span id="dl-path" style="color:#fff">(browser default downloads folder)</span>';
+               let input = document.createElement('input');
+            input.type = 'text';
+            input.value = 'clip.mp4';
+            input.style.width = '100%';
+            input.style.marginBottom = '12px';
+            input.style.color = '#000';
+            input.style.background = '#fff';
+               let ok = document.createElement('button');
+               ok.textContent = 'Download';
+               ok.style.marginRight = '8px';
+               let cancel = document.createElement('button');
+               cancel.textContent = 'Cancel';
+               box.appendChild(label);
+               box.appendChild(input);
+               box.appendChild(ok);
+               box.appendChild(cancel);
+               modal.appendChild(box);
+               document.body.appendChild(modal);
+               input.focus();
+               ok.onclick = function() {
+                   const filename = input.value || 'clip.mp4';
+                   document.body.removeChild(modal);
+                   fetch(`/api/download?start=${encodeURIComponent(s)}&duration=${dur}`)
+                       .then(response => {
+                           if (!response.ok) throw new Error('Network response was not ok');
+                           return response.blob();
+                       })
+                       .then(blob => {
+                           const url = window.URL.createObjectURL(blob);
+                           const a = document.createElement('a');
+                           a.style.display = 'none';
+                           a.href = url;
+                           a.download = filename;
+                           document.body.appendChild(a);
+                           a.click();
+                           window.URL.revokeObjectURL(url);
+                       })
+                       .catch(error => {
+                           alert('Download failed: ' + error);
+                       });
+               };
+               cancel.onclick = function() {
+                   document.body.removeChild(modal);
+               };
+               input.addEventListener('keydown', function(e) {
+                   if (e.key === 'Enter') ok.onclick();
+                   if (e.key === 'Escape') cancel.onclick();
+               });
+        }
+
+        player.on('play', () => { isEditing = true; });
+        player.ready(() => sync());
+    </script>
+</body>
+</html>
+</html>
