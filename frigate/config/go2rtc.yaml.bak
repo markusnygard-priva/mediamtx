@@ -1,0 +1,3 @@
+streams:
+  srt_camera: srt://0.0.0.0:8000?mode=listener
+  test_rtmp: rtmp://0.0.0.0:1935/live/test

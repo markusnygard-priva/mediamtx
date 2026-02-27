@@ -51,113 +51,60 @@ runOnDisconnect:
 ###############################################
 # Global settings -> Authentication
 
-# Authentication method. Available values are:
-# * internal: credentials are stored in the configuration file
-# * http: an external HTTP URL is contacted to perform authentication
-# * jwt: an external identity server provides authentication through JWTs
+# Authentication method. 
 authMethod: internal
 
 # Internal authentication.
 # Enabled users.
 authInternalUsers:
-  # Default unprivileged user.
-  # Username. 'any' means any user, including anonymous ones.
+  # This single 'any' block covers all visitors on your network.
+  # By setting ips to [], we allow the Windows Dashboard to connect.
 - user: any
-  # Password. Not used in case of 'any' user.
+  # Password is left blank for anonymous access within your home network.
   pass:
-  # IPs or networks allowed to use this user. An empty list means any IP.
+  # IPs allowed: [] means any IP can access these actions.
+  # This fixes the "401 Unauthorized" error for your .113 Windows machine.
   ips: []
-  # Permissions.
+  # Permissions granted to any user.
   permissions:
-    # Available actions are: publish, read, playback, api, metrics, pprof.
+    # Allows the dashboard to see path list, config, and stats.
+  - action: api
+    # Allows the dashboard to see server health data.
+  - action: metrics
+    # Allows for performance debugging.
+  - action: pprof
+    # Allows clients to push video streams to this server.
   - action: publish
-    # Paths can be set to further restrict access to a specific path.
-    # An empty path means any path.
-    # Regular expressions can be used by using a tilde as prefix.
     path:
+    # Allows clients to see that a stream exists.
   - action: read
     path:
+    # Allows the HLS/WebRTC players to actually pull video data.
   - action: playback
     path:
 
-  # Default administrator.
-  # This allows to use API, metrics and PPROF without authentication,
-  # if the IP is localhost.
-- user: any
-  pass:
-  ips: ['127.0.0.1', '::1']
-  permissions:
-  - action: api
-  - action: metrics
-  - action: pprof
-
 # HTTP-based authentication.
-# URL called to perform authentication. Every time a user wants
-# to authenticate, the server calls this URL with the POST method
-# and a body containing:
-# {
-#   "user": "user",
-#   "password": "password",
-#   "token": "token",
-#   "ip": "ip",
-#   "action": "publish|read|playback|api|metrics|pprof",
-#   "path": "path",
-#   "protocol": "rtsp|rtmp|hls|webrtc|srt",
-#   "id": "id",
-#   "query": "query"
-# }
-# If the response code is 20x, authentication is accepted, otherwise
-# it is discarded.
+# Left empty as we are using the 'internal' method above.
 authHTTPAddress:
-# If the HTTP authentication URL has a self-signed or invalid certificate,
-# you can provide the fingerprint of the certificate in order to
-# validate it anyway. It can be obtained by running:
-# openssl s_client -connect auth_http_domain:443 </dev/null 2>/dev/null | sed -n '/BEGIN/,/END/p' > server.crt
-# openssl x509 -in server.crt -noout -fingerprint -sha256 | cut -d "=" -f2 | tr -d ':'
 authHTTPFingerprint:
-# Actions to exclude from HTTP-based authentication.
-# Format is the same as the one of user permissions.
 authHTTPExclude:
 - action: api
 - action: metrics
 - action: pprof
 
 # JWT-based authentication.
-# Users have to login through an external identity server and obtain a JWT.
-# This JWT must contain the claim "mediamtx_permissions" with permissions,
-# for instance:
-# {
-#  "mediamtx_permissions": [
-#     {
-#       "action": "publish",
-#       "path": "somepath"
-#     }
-#   ]
-# }
-# Users are expected to pass the JWT in the Authorization header or as password.
-# This is the JWKS URL that will be used to pull (once) the public key that allows
-# to validate JWTs.
+# Left as default/inactive.
 authJWTJWKS:
-# If the JWKS URL has a self-signed or invalid certificate,
-# you can provide the fingerprint of the certificate in order to
-# validate it anyway. It can be obtained by running:
-# openssl s_client -connect jwt_jwks_domain:443 </dev/null 2>/dev/null | sed -n '/BEGIN/,/END/p' > server.crt
-# openssl x509 -in server.crt -noout -fingerprint -sha256 | cut -d "=" -f2 | tr -d ':'
 authJWTJWKSFingerprint:
-# name of the claim that contains permissions.
 authJWTClaimKey: mediamtx_permissions
-# Actions to exclude from JWT-based authentication.
-# Format is the same as the one of user permissions.
 authJWTExclude: []
-# allow passing the JWT through query parameters of HTTP requests (i.e. ?jwt=JWT).
-# This is a security risk and will be disabled in the future.
 authJWTInHTTPQuery: true
 
 ###############################################
 # Global settings -> Control API
 
 # Enable controlling the server through the Control API.
-api: false
+api: true
 # Address of the Control API listener.
 apiAddress: :9997
 # Enable HTTPS on the Control API server.
@@ -255,12 +202,12 @@ playbackTrustedProxies: []
 # Enable publishing and reading streams with the RTSP protocol.
 rtsp: true
 # Enabled RTSP transport protocols. The handshake is always performed with TCP.
-rtspTransports: [udp, multicast, tcp]
+rtspTransports: [tcp]
 # Use secure protocol variants (RTSPS, SRTP, SRTCP).
 # Available values are "no", "strict", "optional".
 rtspEncryption: "no"
 # Address of the TCP/RTSP listener. This is needed only when encryption is "no" or "optional".
-rtspAddress: :8554
+rtspAddress: :8556
 # Address of the TCP/RTSPS listener. This is needed only when encryption is "strict" or "optional".
 rtspsAddress: :8322
 # Address of the UDP/RTP listener. This is needed only when "udp" is in rtspTransports and encryption is "no" or "optional".
@@ -545,26 +492,6 @@ pathDefaults:
   srtPublishPassphrase:
 
   ###############################################
-  # Default path settings -> RTSP source (when source is a RTSP or a RTSPS URL)
-
-  # Transport protocol used to pull the stream. available values are "automatic", "udp", "multicast", "tcp".
-  rtspTransport: automatic
-  # Support sources that don't provide server ports or use random server ports. This is a security issue
-  # and must be used only when interacting with sources that require it.
-  rtspAnyPort: false
-  # Range header to send to the source, in order to start streaming from the specified offset.
-  # available values:
-  # * clock: Absolute time
-  # * npt: Normal Play Time
-  # * smpte: SMPTE timestamps relative to the start of the recording
-  rtspRangeType:
-  # Available values:
-  # * clock: UTC ISO 8601 combined date and time string, e.g. 20230812T120000Z
-  # * npt: duration such as "300ms", "1.5m" or "2h45m", valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h"
-  # * smpte: duration such as "300ms", "1.5m" or "2h45m", valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h"
-  rtspRangeStart:
-  # Range of ports used as source port in outgoing UDP packets.
-  rtspUDPSourcePortRange: [10000, 65535]
 
   ###############################################
   # Default path settings -> RTP source (when source is RTP)
@@ -787,10 +714,41 @@ pathDefaults:
 # for example "~^(test1|test2)$" will match both "test1" and "test2",
 # for example "~^prefix" will match all paths that start with "prefix".
 paths:
+  obs_1:
+    source: publisher
   # example:
   # my_camera:
   #   source: rtsp://my_camera
-
+# Explicitly defined paths for your 10 Frigate inputs
+  frigate_1:
+    source: publisher
+    fallback: /offline_stream # Optional: show a "Camera Offline" video
+  frigate_2:
+    source: publisher
+    fallback: /offline_stream # Optional: show a "Camera Offline" video
+  frigate_3:
+    source: publisher
+    fallback: /offline_stream # Optional: show a "Camera Offline" video
+  frigate_4:
+    source: publisher
+    fallback: /offline_stream # Optional: show a "Camera Offline" video
+  frigate_5:
+    source: publisher
+    fallback: /offline_stream # Optional: show a "Camera Offline" video
+  frigate_6:
+    source: publisher
+    fallback: /offline_stream # Optional: show a "Camera Offline" video
+  frigate_7:
+    source: publisher
+    fallback: /offline_stream # Optional: show a "Camera Offline" video
+  frigate_9:
+    source: publisher
+    fallback: /offline_stream # Optional: show a "Camera Offline" video
+  frigate_10:
+    source: publisher
+    fallback: /offline_stream # Optional: show a "Camera Offline" video
   # Settings under path "all_others" are applied to all paths that
   # do not match another entry.
   all_others:
+  # This allows OBS to create ANY path name it wants
+    source: publisher

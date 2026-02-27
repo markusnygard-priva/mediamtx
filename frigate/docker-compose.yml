@@ -1,0 +1,25 @@
+services:
+  frigate:
+    container_name: frigate
+    privileged: true
+    restart: unless-stopped
+    image: ghcr.io/blakeblackshear/frigate:stable
+    shm_size: "1024mb"
+    devices:
+      - /dev/dri/renderD128
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /home/casparcg/frigate/config:/config
+      - /mnt/frigate_storage:/media/frigate
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+    ports:
+      - "8971:8971"         # Secure Frigate UI (Recommended)
+      - "7000:5000"         # Standard Frigate UI (The one we moved)
+      - "1984:1984"         # go2rtc Web UI (Stream debug)
+      - "8555:8554"         # RTSP Restream
+      - "9666:9666/udp"      # SRT Input (OBS)
+    environment:
+      - FRIGATE_RTSP_PASSWORD=YourSecretPassword123

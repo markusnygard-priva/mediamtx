@@ -1,0 +1,91 @@
+mqtt:
+  enabled: false
+
+# Global recording and detection settings
+record:
+  enabled: true
+  retain:
+    days: 0
+    mode: all
+  events:
+    retain:
+      default: 10 # Retain live clips for 10 days
+      mode: active_objects
+
+detect:
+  enabled: true
+
+cameras:
+  frigate_1:
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.8.23:8556/frigate_1
+          input_args: preset-rtsp-generic
+          roles:
+            - detect
+            - record
+  frigate_2:
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.8.23:8556/frigate_2
+          roles:
+            - detect
+            - record
+  frigate_3:
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.8.23:8556/frigate_3
+          roles:
+            - detect
+            - record
+  frigate_4:
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.8.23:8556/frigate_4
+          roles:
+            - detect
+            - record
+  frigate_5:
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.8.23:8556/frigate_5
+          roles:
+            - detect
+            - record
+  frigate_6:
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.8.23:8556/frigate_6
+          roles:
+            - detect
+            - record
+  frigate_7:
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.8.23:8556/frigate_7
+          roles:
+            - detect
+            - record
+  frigate_8:
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.8.23:8556/frigate_8
+          roles:
+            - detect
+            - record   
+  frigate_9:
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.8.23:8556/frigate_9
+          roles:
+            - detect
+            - record                                                         
+  frigate_10:
+    ffmpeg:
+      inputs:
+        - path: rtsp://192.168.8.23:8556/frigate_10
+          roles:
+            - detect
+            - record
+
+version: 0.14 # Update this to your actual Frigate version

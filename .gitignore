@@ -1,7 +1,22 @@
-/tmp
-/binaries
-/coverage*.txt
-/api/*.html
-/internal/core/VERSION
-/internal/servers/hls/hls.min.js
-/internal/staticsources/rpicamera/mtxrpicam_*/
+# --- Next.js / Node ---
+node_modules/
+.next/
+out/
+build/
+.env*.local
+
+# --- Frigate Storage (CRITICAL) ---
+# This prevents your massive video recordings from trying to upload
+frigate/recordings/
+frigate/clips/
+frigate/cache/
+mnt/frigate_storage/
+
+# --- Databases ---
+*.db
+*.db-shm
+*.db-wal
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db
