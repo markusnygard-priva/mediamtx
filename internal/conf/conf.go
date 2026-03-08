@@ -52,7 +52,8 @@ func setAllNilSlicesToEmptyRecursive(rv reflect.Value) {
 	}
 
 	if rv.Kind() == reflect.Struct {
-		for _, field := range rv.Fields() {
+		for i := range rv.NumField() {
+			field := rv.Field(i)
 			switch field.Kind() {
 			case reflect.Slice:
 				if field.IsNil() {
@@ -620,6 +621,10 @@ func (conf *Conf) Validate(l logger.Writer) error {
 
 	if conf.WriteTimeout <= 0 {
 		return fmt.Errorf("'writeTimeout' must be greater than zero")
+	}
+
+	if conf.WriteQueueSize <= 0 {
+		return fmt.Errorf("'writeQueueSize' must be greater than zero")
 	}
 
 	if (conf.WriteQueueSize & (conf.WriteQueueSize - 1)) != 0 {

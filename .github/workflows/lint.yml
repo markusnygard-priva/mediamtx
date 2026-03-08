@@ -17,13 +17,13 @@ jobs:
 
     - uses: actions/setup-go@v6
       with:
-        go-version: "1.26"
+        go-version: "1.25"
 
     - run: go generate ./...
 
     - uses: golangci/golangci-lint-action@v9
       with:
-        version: v2.10.1
+        version: v2.11.1
 
   go_mod:
     runs-on: ubuntu-22.04
@@ -33,7 +33,7 @@ jobs:
 
     - uses: actions/setup-go@v6
       with:
-        go-version: "1.26"
+        go-version: "1.25"
 
     - run: make lint-go-mod
 
@@ -45,7 +45,7 @@ jobs:
 
     - uses: actions/setup-go@v6
       with:
-        go-version: "1.26"
+        go-version: "1.25"
 
     - run: make lint-conf
 
@@ -57,7 +57,7 @@ jobs:
 
     - uses: actions/setup-go@v6
       with:
-        go-version: "1.26"
+        go-version: "1.25"
 
     - run: make lint-go2api
 
